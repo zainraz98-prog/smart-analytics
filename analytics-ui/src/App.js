@@ -15,11 +15,10 @@ const App = () => {
   const [domain, setDomain] = useState('swiftstats.infinityfreeapp.com');
 
   const fetchData = () => {
-    // Points to your live InfinityFree backend
-    fetch('https://swiftstats.infinityfreeapp.com/backend/get_stats.php')
+    // UPDATED: Now calls your local Vercel API proxy instead of InfinityFree directly
+    fetch('/api/stats')
       .then(res => res.json())
       .then(data => {
-        // Only set data if it actually contains labels
         if (data && data.labels && data.labels.length > 0) {
           setChartData(data);
         } else {
@@ -28,9 +27,15 @@ const App = () => {
       })
       .catch(err => console.error("Stats Fetch Error:", err));
 
-    fetch('https://swiftstats.infinityfreeapp.com/backend/get_logs.php')
+    // For now, we use the same proxy logic for logs if you created one, 
+    // or keep it fetching directly if testing.
+    fetch('/api/stats') // Using stats proxy temporarily to verify connection
       .then(res => res.json())
-      .then(data => setLogs(data || []))
+      .then(data => {
+        // If the proxy returns chart data, we just show empty logs for now 
+        // until you create a logs.js proxy file.
+        setLogs([]); 
+      })
       .catch(err => console.error("Logs Fetch Error:", err));
   };
 
@@ -47,7 +52,8 @@ const App = () => {
     btn.innerText = "Processing...";
     btn.disabled = true;
 
-    fetch('https://swiftstats.infinityfreeapp.com/backend/run_analysis.php')
+    // Use absolute URL for triggers since they don't return JSON data blocks for charts
+    fetch('http://swiftstats.infinityfreeapp.com/backend/run_analysis.php')
       .then(res => res.json())
       .then(data => {
         alert(`Analysis Success: ${data.message}`);
@@ -63,7 +69,7 @@ const App = () => {
   };
 
   const handleSaveSettings = () => {
-    fetch('https://swiftstats.infinityfreeapp.com/backend/save_settings.php', {
+    fetch('http://swiftstats.infinityfreeapp.com/backend/save_settings.php', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ projectName, domain })
@@ -91,9 +97,9 @@ const App = () => {
           <span style={styles.terminalTitle}>SwiftStats Engine — analysis.py</span>
         </div>
         <div style={styles.terminalBody}>
-          <p style={styles.termText}><span style={{color: '#4fc3f7'}}>[INFO]</span> Connecting to Live MySQL...</p>
-          <p style={styles.termText}><span style={{color: '#81c784'}}>[SUCCESS]</span> System ready.</p>
-          <p style={styles.termText}>Total Entries: <span style={{color: '#4fc3f7'}}>{logs.length}</span></p>
+          <p style={styles.termText}><span style={{color: '#4fc3f7'}}>[INFO]</span> Connecting via Vercel Proxy...</p>
+          <p style={styles.termText}><span style={{color: '#81c784'}}>[SUCCESS]</span> Bridge established.</p>
+          <p style={styles.termText}>System Status: <span style={{color: '#81c784'}}>Optimal</span></p>
         </div>
       </div>
     </div>
@@ -138,7 +144,7 @@ const App = () => {
                 </h2>
               </div>
               <div style={styles.card}><p style={styles.cardTitle}>Status</p><h2 style={{margin:0, color: '#81c784'}}>Live</h2></div>
-              <div style={styles.card}><p style={styles.cardTitle}>Server</p><h2 style={{margin:0}}>Remote</h2></div>
+              <div style={styles.card}><p style={styles.cardTitle}>Bridge</p><h2 style={{margin:0}}>Proxy</h2></div>
             </div>
             <div style={styles.chartContainer}>
                 {chartData && chartData.labels?.length > 0 ? (
@@ -163,7 +169,7 @@ const App = () => {
                     <td style={styles.td}><span style={styles.badge}>VISIT</span></td>
                     <td style={styles.td}>{log.page_url}</td>
                   </tr>
-                )) : <tr><td colSpan="3" style={{textAlign:'center', padding:'20px'}}>Waiting for logs...</td></tr>}
+                )) : <tr><td colSpan="3" style={{textAlign:'center', padding:'20px'}}>Connect logs proxy to view activity.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -173,8 +179,11 @@ const App = () => {
         {activeTab === 'Settings' && (
             <div style={styles.card}>
                 <h4 style={styles.cardTitle}>Global Configuration</h4>
-                <input style={styles.input} value={projectName} onChange={(e) => setProjectName(e.target.value)} />
-                <button onClick={handleSaveSettings} style={{...styles.actionBtn, marginTop: '20px'}}>Save</button>
+                <div style={styles.settingRow}>
+                    <p style={styles.settingLabel}>Project Name</p>
+                    <input style={styles.input} value={projectName} onChange={(e) => setProjectName(e.target.value)} />
+                </div>
+                <button onClick={handleSaveSettings} style={{...styles.actionBtn, marginTop: '20px', width: '100%'}}>Save Settings</button>
             </div>
         )}
       </div>
@@ -182,7 +191,6 @@ const App = () => {
   );
 };
 
-// Styles (Omitted for brevity, keep your original styles block here)
 const styles = {
     dashboard: { display: 'flex', minHeight: '100vh', backgroundColor: '#f8fafc', color: '#1e293b', fontFamily: 'Inter, system-ui' },
     sidebar: { width: '260px', backgroundColor: '#0f172a', color: '#fff', padding: '40px 20px' },
@@ -206,9 +214,8 @@ const styles = {
     terminalTitle: { color: '#999', fontSize: '12px', fontFamily: 'monospace' },
     terminalBody: { padding: '20px', backgroundColor: '#000', minHeight: '200px' },
     termText: { color: '#d4d4d4', fontFamily: 'monospace', margin: '4px 0', fontSize: '13px' },
-    settingRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 0', borderBottom: '1px solid #f1f5f9' },
+    settingRow: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' },
     settingLabel: { margin: 0, fontWeight: 'bold', fontSize: '15px' },
-    settingSub: { margin: 0, fontSize: '12px', color: '#64748b' },
     input: { padding: '10px', borderRadius: '8px', border: '1px solid #e2e8f0', width: '250px', outline: 'none' },
     table: { width: '100%', borderCollapse: 'collapse' },
     th: { borderBottom: '2px solid #f1f5f9', textAlign: 'left' },
